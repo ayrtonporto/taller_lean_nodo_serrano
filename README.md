@@ -74,12 +74,19 @@ la propiedad vale para todos los casos posibles.
 ```
 .
 ├── .devcontainer/         # Configuración de Codespaces (no tocar)
-├── Taller/
+├── Python/                # Sistema funcionando en Python (referencia)
+│   ├── votador.py         # ← Grupo A: corré con `python Python/votador.py`
+│   └── f1.py              # ← Grupo B: corré con `python Python/f1.py`
+├── Taller/                # Sistema en Lean 4 (lo que vamos a formalizar)
 │   ├── Votador.lean       # ← Grupo A trabaja acá
 │   └── F1.lean            # ← Grupo B trabaja acá
 ├── lakefile.lean          # Define el proyecto y Mathlib
 └── lean-toolchain         # Versión de Lean 4
 ```
+
+**Recomendación**: antes de empezar con Lean, corré el archivo Python
+de tu grupo para ver el sistema funcionando. Después comparalo con
+el `.lean` correspondiente — son el mismo modelo en dos lenguajes.
 
 ---
 

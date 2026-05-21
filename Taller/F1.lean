@@ -13,7 +13,7 @@
 
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.List.Basic
-import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 
 open Finset
 

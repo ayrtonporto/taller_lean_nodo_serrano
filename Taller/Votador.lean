@@ -13,7 +13,8 @@
 
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Card
-import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Data.Finset.Lattice
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 
 open Finset
 
