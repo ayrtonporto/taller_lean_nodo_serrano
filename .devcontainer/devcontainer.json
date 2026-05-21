@@ -1,0 +1,27 @@
+{
+  "name": "Lean 4 Taller",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "leanprover.lean4"
+      ],
+      "settings": {
+        "editor.fontFamily": "'Cascadia Code', 'Source Code Pro', monospace",
+        "editor.fontLigatures": true,
+        "lean4.serverEnv": {
+          "LEAN_SERVER_LOG_LEVEL": "info"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "remoteUser": "vscode",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb"
+  }
+}
