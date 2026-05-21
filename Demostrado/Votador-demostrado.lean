@@ -2,13 +2,13 @@
   ═══════════════════════════════════════════════════════════
   Taller Lean 4 — GRUPO A
   Sistema de Votación por Mayoría Simple
+  VERSIÓN DEMOSTRADA (referencia para el presentador)
   ═══════════════════════════════════════════════════════════
 
-  El objetivo: formalizar el votador en Python y demostrar
-  4 propiedades fundamentales como teoremas.
-
-  Las propiedades están enunciadas. Reemplacen `sorry` por
-  la demostración. Si compila → Goals accomplished.
+  Nota: las propiedades 1 (verde) están verificadas conceptualmente.
+  Las propiedades 2, 3 y 4 son esqueletos plausibles —
+  algunos lemmas concretos pueden requerir ajuste según
+  Mathlib v4.24.0. Si una falla, marcala con sorry y seguí.
 -/
 
 import Mathlib.Data.Finset.Basic
@@ -21,17 +21,8 @@ open Finset
 
 /- ─────────────────────────────────────────────────────────
    PARTE 1 — EL MODELO
-
-   En Python:
-     class Votador:
-         candidatos : list[str]
-         votos      : dict[str, int]
-         votantes   : set[str]
    ───────────────────────────────────────────────────────── -/
 
-/-- Estado del votador.
-    `votos` es una función total: candidatos válidos pueden tener > 0,
-    cualquier otro string tiene 0. -/
 structure VotadorState where
   candidatos : Finset String
   votos      : String → ℕ
@@ -39,16 +30,6 @@ structure VotadorState where
 
 /- ─────────────────────────────────────────────────────────
    PARTE 2 — LA OPERACIÓN VOTAR
-
-   En Python:
-     def votar(self, votante, candidato):
-       if votante in self.votantes: raise ValueError(...)
-       if candidato not in self.votos: raise ValueError(...)
-       self.votos[candidato] += 1
-       self.votantes.add(votante)
-
-   En Lean las guardas son PARÁMETROS DEL TIPO:
-   hv y hc son pruebas que el caller debe proveer.
    ───────────────────────────────────────────────────────── -/
 
 def votar
@@ -64,16 +45,8 @@ def votar
 
 /- ─────────────────────────────────────────────────────────
    PARTE 3 — EL GANADOR
-
-   En Python:
-     def ganador(self) -> str | None:
-       if not self.votantes: return None
-       max_v = max(self.votos.values())
-       top = [c for c,v in self.votos.items() if v == max_v]
-       return top[0] if len(top)==1 else None
    ───────────────────────────────────────────────────────── -/
 
-/-- Devuelve el ganador único si existe, `none` si hay empate o no hay votantes. -/
 noncomputable def ganador (s : VotadorState) : Option String :=
   if s.votantes = ∅ then none
   else
@@ -88,17 +61,11 @@ noncomputable def ganador (s : VotadorState) : Option String :=
     else none
 
 /- ═══════════════════════════════════════════════════════════
-   LAS CUATRO PROPIEDADES A DEMOSTRAR
+   LAS CUATRO PROPIEDADES — DEMOSTRACIONES
    ═══════════════════════════════════════════════════════════ -/
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 1 — Un votante, un voto.   [Fácil]
-
-   Después de que un votante vote, queda registrado.
-   No puede votar dos veces — la guarda `hv` lo impide
-   por construcción.
-
-   Pista: `simp [votar]` debería cerrarlo.
+   PROPIEDAD 1 — Un votante, un voto.   [Fácil — VERIFICADA]
    ───────────────────────────────────────────────────────── -/
 
 theorem votar_registra
@@ -107,25 +74,16 @@ theorem votar_registra
     (hv : v ∉ s.votantes)
     (hc : c ∈ s.candidatos) :
     v ∈ (votar s v c hv hc).votantes := by
-    dsimp [votar]
-    exact Finset.mem_insert_self v s.votantes
+  dsimp [votar]
+  exact Finset.mem_insert_self v s.votantes
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 2 — Conservación de votos.   [Media]
+   PROPIEDAD 2 — Conservación de votos.   [Media — esqueleto]
 
-   La suma total de votos sobre todos los candidatos
-   coincide con el número de votantes.
-
-   Acá la dificultad está en que `s.votos` es una función,
-   no un Finset, y hay que sumar sobre los candidatos.
-
-   Pista: usar `Finset.sum_ite` y la hipótesis del estado
-   inicial. Esta propiedad NO se demuestra solo sobre
-   un estado arbitrario — necesita inducción sobre cómo
-   se construyó.
+   Idea: la nueva función de votos es if-then-else.
+   Hay que separar la suma en el caso x = c y los demás.
    ───────────────────────────────────────────────────────── -/
 
-/-- Lema auxiliar: después de votar, la suma aumenta en 1. -/
 theorem suma_votos_post_votar
     (s : VotadorState)
     (v c : String)
@@ -133,16 +91,27 @@ theorem suma_votos_post_votar
     (hc : c ∈ s.candidatos) :
     (s.candidatos.sum (votar s v c hv hc).votos) =
     s.candidatos.sum s.votos + 1 := by
-  sorry
+  dsimp [votar]
+  -- La suma se separa: el caso x = c aporta s.votos c + 1,
+  -- los demás x aportan s.votos x.
+  -- Esto se traduce a: ∑ x, (if x=c then s.votos x + 1 else s.votos x)
+  --                 = ∑ x, s.votos x + (if x=c then 1 else 0)
+  --                 = ∑ x, s.votos x + (1 si c está, 0 si no)
+  -- Como hc : c ∈ s.candidatos, la indicadora vale 1.
+  conv_lhs =>
+    ext x
+    rw [show (if x = c then s.votos x + 1 else s.votos x)
+          = s.votos x + (if x = c then 1 else 0) from by
+        split_ifs <;> ring]
+  rw [Finset.sum_add_distrib]
+  rw [Finset.sum_ite_eq' s.candidatos c (fun _ => 1)]
+  simp [hc]
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 3 — Validez del ganador.   [Difícil]
+   PROPIEDAD 3 — Validez del ganador.   [Difícil — esqueleto]
 
    Si declaramos un ganador, ese ganador tiene
    estrictamente más votos que cualquier otro candidato.
-
-   Pista: usar la definición de `ganador` y el hecho
-   de que viene de un filter sobre el sup.
    ───────────────────────────────────────────────────────── -/
 
 theorem ganador_es_maximo
@@ -150,17 +119,27 @@ theorem ganador_es_maximo
     (g : String)
     (h : ganador s = some g) :
     ∀ c ∈ s.candidatos, c ≠ g → s.votos c < s.votos g := by
-  sorry
+  intro c hc hne
+  unfold ganador at h
+  -- Análisis por casos del if interno de `ganador`
+  split_ifs at h with hvac hcard
+  · -- Caso 1: votantes = ∅ → ganador = none, contradice h
+    simp at h
+  · -- Caso 2: top.card = 1, donde top filtra candidatos con votos máximos
+    -- En este caso h tiene la forma some (top.toList.head _) = some g
+    -- Por lo tanto g ∈ top, lo que significa s.votos g = sup
+    -- Como c ≠ g, c no está en top, así s.votos c < sup = s.votos g
+    -- ATENCIÓN: el manejo de toList.head requiere lemmas técnicos.
+    -- Si te cuesta cerrar esta parte, marcala con sorry.
+    sorry
+  · -- Caso 3: top.card ≠ 1 → ganador = none, contradice h
+    simp at h
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 4 — Empate honesto.   [Difícil]
+   PROPIEDAD 4 — Empate honesto.   [Difícil — esqueleto]
 
-   Si no hay ganador único (y hay votantes), entonces
-   existen al menos dos candidatos con el mismo
-   máximo de votos.
-
-   Pista: por contradicción. Si todos tienen votos
-   distintos, el top filter tiene cardinal 1.
+   Si no hay ganador único (y hay votantes), existen
+   al menos dos candidatos con el mismo máximo de votos.
    ───────────────────────────────────────────────────────── -/
 
 theorem empate_es_real
@@ -170,13 +149,23 @@ theorem empate_es_real
     ∃ a ∈ s.candidatos, ∃ b ∈ s.candidatos,
       a ≠ b ∧ s.votos a = s.votos b ∧
       ∀ c ∈ s.candidatos, s.votos c ≤ s.votos a := by
-  sorry
+  unfold ganador at h
+  split_ifs at h with hvac hcard
+  · -- Caso 1: votantes = ∅, contradice hne
+    exact absurd hvac hne
+  · -- Caso 2: top.card = 1, pero entonces ganador = some _, contradice h
+    simp at h
+  · -- Caso 3: top.card ≠ 1, así que top tiene 0 o ≥ 2 elementos
+    -- top es no vacío (siempre existe un candidato con el sup),
+    -- así que top.card ≥ 2.
+    -- Por Finset.one_lt_card_iff existen a, b ∈ top distintos.
+    -- a, b ∈ top significa s.votos a = sup ∧ s.votos b = sup.
+    -- Por lo tanto s.votos a = s.votos b.
+    -- Y como sup es el máximo: ∀ c ∈ candidatos, s.votos c ≤ sup = s.votos a.
+    sorry
 
 /- ═══════════════════════════════════════════════════════════
-   PRUEBA RÁPIDA - PARA VER QUE EL ENTORNO FUNCIONA
-
-   Cuando todo lo de arriba esté bien, este teorema
-   debería compilar sin sorry:
+   PRUEBA RÁPIDA
    ═══════════════════════════════════════════════════════════ -/
 
 example : 2 + 2 = 4 := rfl

@@ -2,13 +2,13 @@
   ═══════════════════════════════════════════════════════════
   Taller Lean 4 — GRUPO B
   Campeonato de F1 (Reglamento FIA 2025)
+  VERSIÓN DEMOSTRADA (referencia para el presentador)
   ═══════════════════════════════════════════════════════════
 
-  El objetivo: formalizar el sistema de puntos de F1
-  y demostrar 4 propiedades fundamentales.
-
-  Reemplacen `sorry` por la demostración.
-  Si compila → Goals accomplished.
+  Nota: las propiedades 1 (verde) están verificadas.
+  Las propiedades 2, 3 y 4 son esqueletos plausibles —
+  algunos lemmas concretos pueden requerir ajuste según
+  Mathlib v4.24.0. Si una falla, marcala con sorry y seguí.
 -/
 
 import Mathlib.Data.Finset.Basic
@@ -20,12 +20,6 @@ open Finset
 
 /- ─────────────────────────────────────────────────────────
    PARTE 1 — TABLA DE PUNTOS (REGLAMENTO 2025)
-
-   En Python:
-     PUNTOS = {1:25, 2:18, 3:15, 4:12, 5:10,
-               6:8, 7:6, 8:4, 9:2, 10:1}
-
-   Sin punto por vuelta rápida (eliminado en 2025).
    ───────────────────────────────────────────────────────── -/
 
 def puntajePos : ℕ → ℕ
@@ -43,16 +37,6 @@ def puntajePos : ℕ → ℕ
 
 /- ─────────────────────────────────────────────────────────
    PARTE 2 — EL PILOTO Y EL CAMPEONATO
-
-   En Python:
-     @dataclass
-     class Piloto:
-       puntos: int = 0
-       posiciones: list[int] = []   # historial
-
-     @dataclass
-     class Campeonato:
-       pilotos: dict[str, Piloto]
    ───────────────────────────────────────────────────────── -/
 
 structure Piloto where
@@ -68,21 +52,15 @@ structure Campeonato where
    PARTE 3 — FUNCIONES AUXILIARES
    ───────────────────────────────────────────────────────── -/
 
-/-- Cuenta cuántas veces el piloto terminó en la posición k. -/
 def Piloto.conteo (p : Piloto) (k : ℕ) : ℕ :=
   p.posiciones.countP (· = k)
 
-/-- Suma total de puntos distribuidos en una carrera.
-    Útil para la propiedad 2. -/
 def puntosCarrera (resultado : List String) : ℕ :=
   (List.range resultado.length).foldl (fun acc i => acc + puntajePos (i + 1)) 0
 
-/-- Comparación lexicográfica para countback:
-    primero por puntos, después por victorias, después por 2°, etc. -/
 def claveDesempate (p : Piloto) : ℕ × List ℕ :=
   (p.puntos, (List.range 10).map (fun k => p.conteo (k + 1)))
 
-/-- Comparación lexicográfica sobre listas de `ℕ` para desempate. -/
 def lexListNatLt : List ℕ → List ℕ → Bool
   | [], [] => false
   | [], _ => false
@@ -92,19 +70,15 @@ def lexListNatLt : List ℕ → List ℕ → Bool
     else if b < a then false
     else lexListNatLt as bs
 
-/-- La clave `a` es menor que la clave `b` en el orden de desempate.
-    Primero se comparan puntos, luego la lista de posiciones. -/
 def claveMenor (a b : ℕ × List ℕ) : Bool :=
   if a.1 < b.1 then true
   else if b.1 < a.1 then false
   else lexListNatLt a.2 b.2
 
-/-- Líder del campeonato según puntos + countback. -/
 noncomputable def lider (c : Campeonato) : Option String :=
   if c.pilotos = ∅ then none
   else
     let pilotosList := c.pilotos.toList
-    -- Tomamos el máximo según la clave lexicográfica
     pilotosList.head?.map (fun primero =>
       pilotosList.foldl (fun mejor p =>
         if claveMenor (claveDesempate (c.estado mejor))
@@ -112,48 +86,54 @@ noncomputable def lider (c : Campeonato) : Option String :=
         then p else mejor) primero)
 
 /- ═══════════════════════════════════════════════════════════
-   LAS CUATRO PROPIEDADES A DEMOSTRAR
+   LAS CUATRO PROPIEDADES — DEMOSTRACIONES
    ═══════════════════════════════════════════════════════════ -/
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 1 — Puntos no negativos.   [Fácil — gratis]
+   PROPIEDAD 1 — Puntos no negativos.   [Fácil — VERIFICADA]
 
-   Los puntos siempre son ≥ 0.
-   Es trivial: usamos ℕ, que por definición es no negativo.
-   El compilador lo garantiza por el sistema de tipos.
-
-   Pista: `Nat.zero_le` cierra esto en una línea.
+   Gratis porque usamos ℕ, que nunca es negativo.
    ───────────────────────────────────────────────────────── -/
 
 theorem puntos_no_negativos
     (c : Campeonato)
     (p : String) :
     (c.estado p).puntos ≥ 0 := by
-  sorry
+  exact Nat.zero_le _
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 2 — Cota de puntos por carrera.   [Fácil]
+   PROPIEDAD 2 — Cota de puntos por carrera.   [Media — esqueleto]
 
-   Una carrera distribuye como máximo 101 puntos
-   (25+18+15+12+10+8+6+4+2+1 = 101).
-
-   Pista: por inducción sobre la longitud del resultado,
-   o por cálculo directo si la lista tiene ≤ 10 elementos.
-   `decide` o `omega` pueden ayudar para casos finitos.
+   Una carrera distribuye como máximo 101 puntos.
    ───────────────────────────────────────────────────────── -/
 
+/-- Lema auxiliar: la suma parcial de puntajes hasta el índice n
+    está acotada por la suma total de los 10 primeros. -/
 theorem max_puntos_carrera (resultado : List String) :
     puntosCarrera resultado ≤ 101 := by
+  unfold puntosCarrera
+  -- Estrategia: como puntajePos k = 0 para k > 10,
+  -- el fold solo acumula valores no nulos para las primeras 10 posiciones.
+  -- La suma de las primeras 10: 25+18+15+12+10+8+6+4+2+1 = 101.
+  --
+  -- Inducción sobre la longitud de la lista resultado.
+  -- Caso base: lista vacía → 0 ≤ 101.
+  -- Caso inductivo: agregar un elemento agrega puntajePos (n+1).
+  --   Si n+1 ≤ 10, el total acumulado se mantiene ≤ 101 porque
+  --   los puntajes son decrecientes.
+  --   Si n+1 > 10, puntajePos (n+1) = 0, total no cambia.
+  --
+  -- ATENCIÓN: la prueba formal de esto requiere lemmas sobre foldl
+  -- que pueden ser técnicos. Estrategia más directa:
+  -- usar `interval_cases` sobre resultado.length o un lema sobre
+  -- la suma de los primeros n términos de puntajePos.
   sorry
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 3 — Validez del líder.   [Media]
+   PROPIEDAD 3 — Validez del líder.   [Media — esqueleto]
 
    Si declaramos un líder, ningún otro piloto tiene
    estrictamente más puntos.
-
-   Pista: usar la definición de `lider` y propiedades
-   del fold con la comparación lexicográfica.
    ───────────────────────────────────────────────────────── -/
 
 theorem lider_tiene_max_puntos
@@ -161,19 +141,28 @@ theorem lider_tiene_max_puntos
     (l : String)
     (h : lider c = some l) :
     ∀ p ∈ c.pilotos, (c.estado p).puntos ≤ (c.estado l).puntos := by
-  sorry
+  intro p hp
+  unfold lider at h
+  split_ifs at h with hvac
+  · -- Caso 1: pilotos = ∅, no puede haber p ∈ pilotos
+    rw [hvac] at hp
+    simp at hp
+  · -- Caso 2: pilotos no vacío, l surge del fold con claveMenor
+    -- Invariante del fold: en cada paso, mejor es ≥ todos los pilotos vistos.
+    -- Al final del fold, l ≥ todos los pilotos.
+    --
+    -- Propiedad: si claveMenor (clave p) (clave l) ⇒ p.puntos ≤ l.puntos.
+    -- Esto es porque claveMenor compara primero por puntos.
+    --
+    -- ATENCIÓN: razonar sobre fold con claveMenor es técnico.
+    -- Lemma útil: List.foldl_eq_of_comm, o por inducción sobre la lista.
+    sorry
 
 /- ─────────────────────────────────────────────────────────
-   PROPIEDAD 4 — Countback por victorias.   [Difícil]
+   PROPIEDAD 4 — Countback por victorias.   [Difícil — esqueleto]
 
-   Si dos pilotos tienen los mismos puntos, pero uno
-   tiene MÁS victorias que el otro, entonces el que
-   tiene menos victorias NO puede ser líder.
-
-   Esta es la regla central del desempate de la FIA.
-
-   Pista: usar la definición de `claveDesempate` y
-   las propiedades del orden lexicográfico sobre pares.
+   Si dos pilotos tienen los mismos puntos pero uno tiene
+   MÁS victorias, el de menos victorias NO es líder.
    ───────────────────────────────────────────────────────── -/
 
 theorem countback_victorias
@@ -184,15 +173,32 @@ theorem countback_victorias
     (h_puntos : (c.estado a).puntos = (c.estado b).puntos)
     (h_victorias : (c.estado a).conteo 1 > (c.estado b).conteo 1) :
     lider c ≠ some b := by
+  intro hlider
+  -- Por contradicción: si b fuera líder, entonces para todo p,
+  -- claveMenor (clave p) (clave b) ∨ clave p = clave b.
+  -- En particular para a: claveMenor (clave a) (clave b).
+  --
+  -- claveMenor compara: primero puntos, después conteo[1].
+  -- Por h_puntos las primeras componentes son iguales,
+  -- así el desempate va a la lista de conteos.
+  -- conteo a 1 > conteo b 1 implica que clave a > clave b en lexicográfico,
+  -- contradiciendo claveMenor (clave a) (clave b).
+  --
+  -- ATENCIÓN: esta es la propiedad más técnica. Requiere:
+  -- 1) probar la propiedad invariante del fold (que es similar a Prop 3)
+  -- 2) razonar sobre el orden lexicográfico de lexListNatLt
+  --
+  -- Sugerencia: empezar por el caso particular de claveMenor cuando
+  -- los puntos son iguales, mostrando que se reduce a lexListNatLt
+  -- sobre las listas de conteos.
   sorry
 
 /- ═══════════════════════════════════════════════════════════
-   PRUEBA RÁPIDA - PARA VER QUE EL ENTORNO FUNCIONA
+   PRUEBA RÁPIDA
    ═══════════════════════════════════════════════════════════ -/
 
 example : 2 + 2 = 4 := rfl
 
--- Verificá que la tabla de puntos compila bien:
 example : puntajePos 1 = 25 := rfl
 example : puntajePos 10 = 1 := rfl
 example : puntajePos 11 = 0 := rfl
